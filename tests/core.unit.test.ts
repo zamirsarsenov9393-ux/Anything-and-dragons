@@ -16,6 +16,12 @@ describe('формулы', () => {
     expect(evaluateFormula('dex.score', scope)).toBe(16);
     expect(evaluateFormula('level.class.wizard', scope)).toBe(0);
   });
+  it('таблица по уровню', () => {
+    expect(evaluateFormula('table(level.class.paladin, 1, 2, 3, 4, 5, 6)', scope)).toBe(5);
+    expect(evaluateFormula('table(level.class.wizard, 7, 8)', scope)).toBe(7);
+    expect(evaluateFormula('table(30, 7, 8)', scope)).toBe(8);
+    expect(evaluateFormula('table(3)', scope)).toBe(0);
+  });
   it('округляет итог вниз и не делит на ноль', () => {
     expect(evaluateFormula('7 / 2', scope)).toBe(3);
     expect(evaluateFormula('5 / 0', scope)).toBe(0);

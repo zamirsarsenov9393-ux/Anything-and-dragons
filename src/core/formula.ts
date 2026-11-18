@@ -1,6 +1,6 @@
 /**
  * Безопасный язык формул для контент-пакетов.
- * Пример: `10 + dex.mod + con.mod`, `max(1, cha.mod)`, `floor(level.class.paladin / 2) + cha.mod`.
+ * Пример: `10 + dex.mod + con.mod`, `max(1, cha.mod)`, `table(level.class.barbarian, 2, 2, 3, …)`.
  * Строка разбирается в AST; eval не используется. Неизвестные имена отклоняются при разборе.
  */
 
@@ -11,7 +11,9 @@ export type FormulaNode =
   | { k: 'bin'; op: '+' | '-' | '*' | '/'; a: FormulaNode; b: FormulaNode }
   | { k: 'call'; fn: FormulaFn; args: FormulaNode[] };
 
-const FUNCTIONS = { min: Math.min, max: Math.max, floor: Math.floor, ceil: Math.ceil, abs: Math.abs } as const;
+/** table(уровень, v1, …, v20) — значение из таблицы по уровню (для ресурсов вроде числа ярости). */
+const table = (i: number, ...vals: number[]) => (vals.length ? vals[Math.max(0, Math.min(vals.length - 1, Math.floor(i) - 1))]! : 0);
+const FUNCTIONS = { min: Math.min, max: Math.max, floor: Math.floor, ceil: Math.ceil, abs: Math.abs, table } as const;
 export type FormulaFn = keyof typeof FUNCTIONS;
 
 const VAR_PATTERNS: RegExp[] = [

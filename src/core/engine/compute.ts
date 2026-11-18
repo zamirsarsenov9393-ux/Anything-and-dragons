@@ -66,6 +66,7 @@ class Collector {
   speciesSpeed = 30;
   size = 'medium';
   private missing = new Set<string>();
+  private occurrences = new Map<string, number>();
 
   constructor(readonly build: CharacterBuild, readonly rs: RuleSet, readonly resolver: ContentResolver, readonly upto: number) {
     for (const c of build.originChoices) this.choiceMap.set(c.choiceId, c.selected);
@@ -118,12 +119,18 @@ class Collector {
       if (prev && !m.repeatable) this.issue('feat-duplicate', 'error', `Черту «${it.name}» нельзя взять дважды`, { level, sourceUid: it.uid });
       this.feats.push({ uid: it.uid, prerequisite: it.prerequisite as Predicate | undefined, repeatable: !!m.repeatable });
     }
+    // одна и та же особенность может прийти дважды (компетентность плута на 1 и 6 уровне):
+    // эффекты складываются по stackKey, а выборы получают свой номер
+    const n = (this.occurrences.get(it.uid) ?? 0) + 1;
+    this.occurrences.set(it.uid, n);
+    const occ = n > 1 ? `#${n}` : '';
     this.features.push({ uid: it.uid, level, name: it.name });
     this.addSource(it.uid, it.name, level, m.effects ?? []);
     for (const ch of m.choices ?? []) {
       if (ch.atLevels && ownerClass) {
+        if (n > 1) continue;
         for (const L of ch.atLevels) if (L <= (this.finalClassLevels[ownerClass] ?? 0)) this.choice(ch, it.uid, it.name, level, ownerClass, `@${L}`);
-      } else this.choice(ch, it.uid, it.name, level, ownerClass);
+      } else this.choice(ch, it.uid, it.name, level, ownerClass, occ);
     }
   }
 
