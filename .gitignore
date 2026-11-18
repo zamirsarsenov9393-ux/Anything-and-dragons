@@ -2,3 +2,7 @@ node_modules/
 scratch/
 coverage/
 dist/
+test-results/
+playwright-report/
+public/packages/
+e2e/shots/

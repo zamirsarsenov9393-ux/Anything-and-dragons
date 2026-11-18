@@ -1,0 +1,68 @@
+@import 'tailwindcss';
+@import '@fontsource/cormorant-garamond/cyrillic-600.css';
+@import '@fontsource/cormorant-garamond/latin-600.css';
+@import '@fontsource/cormorant-garamond/cyrillic-700.css';
+@import '@fontsource/cormorant-garamond/latin-700.css';
+@import '@fontsource/onest/cyrillic-400.css';
+@import '@fontsource/onest/latin-400.css';
+@import '@fontsource/onest/cyrillic-500.css';
+@import '@fontsource/onest/latin-500.css';
+@import '@fontsource/onest/cyrillic-600.css';
+@import '@fontsource/onest/latin-600.css';
+
+@theme {
+  --color-ink: #0d0c0b;
+  --color-coal: #151412;
+  --color-graphite: #1d1b19;
+  --color-slate: #26231f;
+  --color-edge: #3a332b;
+  --color-brown: #3b2a1c;
+  --color-gold: #c4a062;
+  --color-gold-soft: #9c7f4c;
+  --color-gold-bright: #e3c78a;
+  --color-parchment: #ece1c8;
+  --color-parchment-dim: #b9ad95;
+  --color-muted: #8d8373;
+  --color-blood: #b4533f;
+  --color-moss: #7f9a62;
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sans: 'Onest', system-ui, -apple-system, sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: radial-gradient(120% 60% at 50% -10%, #241f1a 0%, var(--color-ink) 60%) fixed;
+  color: var(--color-parchment);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+::selection { background: color-mix(in srgb, var(--color-gold) 40%, transparent); }
+
+.font-display { font-family: var(--font-display); letter-spacing: 0.01em; }
+.safe-top { padding-top: max(env(safe-area-inset-top), 0.75rem); }
+.safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0.5rem); }
+
+/* «карточка» с тонкой золотой кромкой */
+.card {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--color-slate) 92%, transparent), var(--color-graphite));
+  border: 1px solid var(--color-edge);
+  border-radius: 1rem;
+  box-shadow: 0 1px 0 rgba(227, 199, 138, 0.06) inset, 0 12px 30px -18px rgba(0, 0, 0, 0.8);
+}
+.card-gold { border-color: color-mix(in srgb, var(--color-gold) 45%, var(--color-edge)); }
+.rule { height: 1px; background: linear-gradient(90deg, transparent, var(--color-gold-soft), transparent); opacity: .5; }
+.prose-srd p { margin: 0 0 .6em; }
+.prose-srd strong { color: var(--color-gold-bright); font-weight: 600; }
+.scroll-x { overflow-x: auto; scrollbar-width: none; min-width: 0; max-width: 100%; }
+.scroll-x::-webkit-scrollbar { display: none; }
+input, select, textarea { font-size: 16px; } /* iOS не масштабирует поле при фокусе */
+@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* одноколоночные сетки не должны раздуваться по самому длинному содержимому (иначе iPhone уменьшает масштаб страницы) */
+@layer base {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  button { min-width: 0; }
+}

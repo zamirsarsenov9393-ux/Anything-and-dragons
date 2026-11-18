@@ -53,6 +53,8 @@ function dedupeByStack<T extends { e: Effect }>(list: T[], valueOf: (x: T) => nu
 class Collector {
   readonly issues: ValidationIssue[] = [];
   readonly pending: PendingChoice[] = [];
+  /** все точки выбора, включая уже сделанные — чтобы их можно было поменять */
+  readonly points: PendingChoice[] = [];
   readonly sources: Source[] = [];
   readonly used = new Map<string, PinnedRef>();
   readonly classLevels: Record<string, number> = {};
@@ -143,8 +145,10 @@ class Collector {
     const choiceId = `${ownerUid}#${ch.key}${suffix}`;
     const options = this.optionsFor(ch);
     const selected = this.choiceMap.get(choiceId);
+    const pc: PendingChoice = { choiceId, level, sourceUid: ownerUid, pick: ch.pick, options, required: ch.required, kind: ch.grants, label: `${ownerName}: ${ch.label}` };
+    this.points.push(pc);
     if (!selected || selected.length === 0) {
-      this.pending.push({ choiceId, level, sourceUid: ownerUid, pick: ch.pick, options, required: ch.required });
+      this.pending.push(pc);
       return;
     }
     if (selected.length !== ch.pick) {
@@ -189,7 +193,7 @@ class Collector {
           for (const ch of m.choices) this.choice(ch, it.uid, it.name, 0);
         }
       }
-    } else this.pending.push({ choiceId: 'origin#species', level: 0, sourceUid: 'core:rule/origin', pick: 1, options: this.resolver.query({ type: 'species', edition: b.edition }).map((i) => i.uid), required: true });
+    } else this.pending.push({ choiceId: 'origin#species', level: 0, sourceUid: 'core:rule/origin', pick: 1, options: this.resolver.query({ type: 'species', edition: b.edition }).map((i) => i.uid), required: true, kind: 'species', label: 'Вид' });
 
     // --- предыстория
     if (b.backgroundUid) {
@@ -201,7 +205,7 @@ class Collector {
         if (this.rs.originAbilitySource === 'background' && m.abilityOptions) this.backgroundAbilities(bg, m.abilityOptions);
         if (m.originFeat) this.addFeatureLike(m.originFeat, 0);
       }
-    } else this.pending.push({ choiceId: 'origin#background', level: 0, sourceUid: 'core:rule/origin', pick: 1, options: this.resolver.query({ type: 'background', edition: b.edition }).map((i) => i.uid), required: true });
+    } else this.pending.push({ choiceId: 'origin#background', level: 0, sourceUid: 'core:rule/origin', pick: 1, options: this.resolver.query({ type: 'background', edition: b.edition }).map((i) => i.uid), required: true, kind: 'background', label: 'Предыстория' });
 
     // --- уровни: создание на N-м уровне и повышение — один и тот же проход
     const seen: Record<string, number> = {};
@@ -236,7 +240,9 @@ class Collector {
         const choiceId = `${cls.uid}#subclass`;
         const options = this.resolver.query({ type: 'subclass', edition: b.edition, where: { class: cls.uid } }).map((x): string => x.uid);
         const sel = this.choiceMap.get(choiceId)?.[0];
-        if (!sel) this.pending.push({ choiceId, level, sourceUid: cls.uid, pick: 1, options, required: true });
+        const pc: PendingChoice = { choiceId, level, sourceUid: cls.uid, pick: 1, options, required: true, kind: 'subclass', label: `${cls.name}: подкласс` };
+        this.points.push(pc);
+        if (!sel) this.pending.push(pc);
         else if (!options.includes(sel) && !this.resolver.get(sel as ContentUid)?.fromSnapshot) this.issue('choice-invalid', 'error', `«${cls.name}»: подкласс «${sel}» не подходит`, { level });
         else this.subclassOf[cls.uid] = sel as ContentUid;
       }
@@ -256,7 +262,9 @@ class Collector {
   private backgroundAbilities(bg: ResolvedItem, opts: AbilityId[]) {
     const choiceId = `${bg.uid}#ability-scores`;
     const sel = this.choiceMap.get(choiceId);
-    if (!sel?.length) { this.pending.push({ choiceId, level: 0, sourceUid: bg.uid, pick: 3, options: opts, required: true }); return; }
+    const pc: PendingChoice = { choiceId, level: 0, sourceUid: bg.uid, pick: 3, options: opts, required: true, kind: 'ability-scores', label: `${bg.name}: характеристики` };
+    this.points.push(pc);
+    if (!sel?.length) { this.pending.push(pc); return; }
     const okShape = sel.length === 3 && sel.every((a) => opts.includes(a as AbilityId)) &&
       (new Set(sel).size === 3 || (new Set(sel).size === 2));
     if (!okShape) { this.issue('background-abilities', 'error', `«${bg.name}»: распределите +2/+1 или +1/+1/+1 между ${opts.join(', ')}`, { sourceUid: bg.uid }); return; }
@@ -267,14 +275,13 @@ class Collector {
     const choiceId = `${cls.uid}#asi@${classLevel}`;
     const sel = this.choiceMap.get(choiceId);
     const featsAllowed = this.build.options.allowFeats || this.build.edition === '2024';
-    if (!sel?.length) {
-      const feats = featsAllowed ? this.resolver.query({ type: 'feat', edition: this.build.edition }).filter((f) => {
-        const cat = (f.mechanics as M<'feat'>).category;
-        return this.build.edition === '2014' || cat === 'general' || cat === 'epic-boon';
-      }).map((f) => f.uid) : [];
-      this.pending.push({ choiceId, level, sourceUid: cls.uid, pick: 2, options: [...ABILITIES, ...feats], required: true });
-      return;
-    }
+    const feats = featsAllowed ? this.resolver.query({ type: 'feat', edition: this.build.edition }).filter((f) => {
+      const cat = (f.mechanics as M<'feat'>).category;
+      return this.build.edition === '2014' || cat === 'general' || cat === 'epic-boon';
+    }).map((f) => f.uid) : [];
+    const pc: PendingChoice = { choiceId, level, sourceUid: cls.uid, pick: 2, options: [...ABILITIES, ...feats], required: true, kind: 'asi', label: `${cls.name}: увеличение характеристик или черта` };
+    this.points.push(pc);
+    if (!sel?.length) { this.pending.push(pc); return; }
     if (sel.length === 1 && isUid(sel[0]!)) {
       if (!featsAllowed) { this.issue('feats-disabled', 'error', 'Черты выключены в настройках (опциональное правило 2014)', { level }); return; }
       this.addFeatureLike(sel[0]!, level, cls.uid);
@@ -551,7 +558,7 @@ function computeInternal(build: CharacterBuild, resolver: ContentResolver, opts:
     size: c.size, senses, damageModifiers, grantedSpells, weaponMasteryCount,
     carryingCapacity: rs.carryingCapacity(abilities.str.value, c.size), attunedCount,
   };
-  return { sheet, pending: c.pending, issues: c.issues, usedContent: [...c.used.values()], engineVersion: ENGINE_VERSION };
+  return { sheet, pending: c.pending, choices: c.points, issues: c.issues, usedContent: [...c.used.values()], engineVersion: ENGINE_VERSION };
 }
 
 function validateAbilities(build: CharacterBuild, rs: RuleSet, c: Collector) {

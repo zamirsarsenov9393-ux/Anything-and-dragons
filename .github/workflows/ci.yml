@@ -1,9 +1,19 @@
-name: Проверка
+name: Проверка и публикация
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -17,5 +27,30 @@ jobs:
       - run: npm ci
       - name: Проверка типов
         run: npm run typecheck
-      - name: Тесты и покрытие
+      - name: Тесты движка, контента и базы
         run: npm run test:coverage
+      - name: Сборка
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - name: Браузерные тесты (iPhone, Chromium)
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: dist
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

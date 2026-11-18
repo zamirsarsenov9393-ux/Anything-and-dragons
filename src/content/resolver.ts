@@ -22,6 +22,10 @@ export class MemoryResolver implements ContentResolver {
     for (const pkg of packages) {
       if (pkg.kind !== 'content') continue;
       for (const it of pkg.items as ContentItem[]) {
+        // хэш считается лениво: на телефоне тысячи SHA-256 при каждом открытии ни к чему
+        let hash: string | undefined;
+        const pinned = { uid: it.id as ContentUid, packageId: pkg.id, packageVersion: pkg.version } as PinnedRef;
+        Object.defineProperty(pinned, 'hash', { enumerable: true, get: () => (hash ??= mechanicsHash({ m: it.mechanics, p: it.prerequisite })) });
         this.items.set(it.id, {
           uid: it.id as ContentUid,
           type: it.type,
@@ -29,12 +33,20 @@ export class MemoryResolver implements ContentResolver {
           name: it.name,
           mechanics: it.mechanics,
           prerequisite: it.prerequisite,
-          pinned: { uid: it.id as ContentUid, packageId: pkg.id, packageVersion: pkg.version, hash: mechanicsHash({ m: it.mechanics, p: it.prerequisite }) },
+          pinned,
           fromSnapshot: false,
         });
       }
     }
     for (const s of snapshots) this.snapshots.set(s.uid, s);
+  }
+
+  /** Тот же контент + снимки конкретного персонажа, без повторной индексации пакетов. */
+  withSnapshots(snapshots: MechanicsSnapshot[]): MemoryResolver {
+    const r = Object.create(MemoryResolver.prototype) as MemoryResolver;
+    r.items = this.items;
+    r.snapshots = new Map(snapshots.map((s) => [s.uid, s]));
+    return r;
   }
 
   get(uid: ContentUid): ResolvedItem | undefined {
@@ -62,7 +74,7 @@ export class MemoryResolver implements ContentResolver {
   snapshotOf(refs: PinnedRef[]): MechanicsSnapshot[] {
     return refs.flatMap((r) => {
       const it = this.get(r.uid);
-      return it ? [{ ...r, type: it.type, edition: it.edition, name: it.name, mechanics: it.mechanics, prerequisite: it.prerequisite }] : [];
+      return it ? [{ uid: r.uid, packageId: r.packageId, packageVersion: r.packageVersion, hash: r.hash, type: it.type, edition: it.edition, name: it.name, mechanics: it.mechanics, prerequisite: it.prerequisite }] : [];
     });
   }
 }

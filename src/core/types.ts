@@ -95,6 +95,9 @@ export interface PendingChoice {
   /** уже отфильтрованные допустимые варианты */
   options: ContentUid[] | string[];
   required: boolean;
+  /** что даёт выбор: навык, черту, подкласс… — для группировки по шагам мастера */
+  kind: 'species' | 'background' | 'subclass' | 'asi' | 'ability-scores' | 'proficiency.skill' | 'proficiency.tool' | 'proficiency.language' | 'expertise' | 'ability.bonus' | 'item' | 'spell' | 'feat' | 'feature';
+  label: string;
 }
 
 export type Severity = 'error' | 'warning' | 'info';
@@ -167,6 +170,8 @@ export interface ComputeOptions {
 export interface EngineResult {
   sheet: Sheet;
   pending: PendingChoice[];
+  /** все точки выбора, включая сделанные */
+  choices: PendingChoice[];
   issues: ValidationIssue[];
   /** все элементы контента, повлиявшие на расчёт — сохраняются как PinnedRef */
   usedContent: PinnedRef[];
