@@ -141,7 +141,27 @@ export interface Sheet {
   attacks: Array<{ name: string; toHit: Stat; damage: string; damageType: string; sourceUid?: ContentUid }>;
   attacksPerAction: number;
   features: Array<{ uid: ContentUid; level: number; name: string }>;
-  resources: Array<{ id: string; max: number; recharge: 'short' | 'long' | 'dawn' | 'none' }>;
+  resources: Array<{ id: string; label: string; max: number; recharge: 'short' | 'long' | 'dawn' | 'none' }>;
+  size: string;
+  senses: Record<string, number>;
+  damageModifiers: Array<{ damageType: string; level: 'resistance' | 'immunity' | 'vulnerability' }>;
+  /** заклинания, выданные особенностями (домен, клятва, черта) */
+  grantedSpells: Array<{ uid: ContentUid; sourceUid: ContentUid; alwaysPrepared: boolean; countsAgainstLimit: boolean }>;
+  weaponMasteryCount: number;
+  carryingCapacity: number;
+  attunedCount: number;
+}
+
+/** Экипировка приходит из инвентаря (таблица inventory_item), не из журнала решений. */
+export interface EquippedItem {
+  uid?: ContentUid;
+  slot: 'armor' | 'shield' | 'main-hand' | 'off-hand' | 'two-hands' | 'worn' | null;
+  attuned?: boolean;
+  magicBonus?: number;
+}
+
+export interface ComputeOptions {
+  equipment?: EquippedItem[];
 }
 
 export interface EngineResult {
@@ -191,6 +211,8 @@ export interface ResolvedItem {
   edition: Edition | 'any';
   name: string;
   mechanics: unknown;
+  /** условие получения (предпосылка черты и т. п.) — тоже механика */
+  prerequisite?: unknown;
   pinned: PinnedRef;
   /** элемент взят из снимка, потому что источник отключён/удалён */
   fromSnapshot: boolean;

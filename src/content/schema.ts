@@ -157,7 +157,7 @@ export const classItem = z.object({
     primaryAbilities: z.array(ability),
     savingThrows: z.array(ability).length(2),
     startingProficiencies: z.array(effect),
-    multiclass: z.object({ prerequisite: predicate, proficiencies: z.array(effect) }),
+    multiclass: z.object({ prerequisite: predicate, proficiencies: z.array(effect), skillChoice: choice.optional() }),
     skillChoice: choice,
     subclassLevel: z.number().int().min(1).max(20),
     asiLevels: z.array(z.number().int()),
